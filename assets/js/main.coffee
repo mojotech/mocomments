@@ -7,57 +7,60 @@
 require.config
   paths:
     jquery: '//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.0/jquery.min'
-    parse: 'http://www.parsecdn.com/js/parse-1.2.17.min'
+require ['jquery'], ($) ->
+  new Comojo()
 
-require ['jquery', 'parse'], ($) ->
-  Parse.initialize("ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w", "8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3")
+class Comojo
+    constructor: (options) ->
+      $.getScript '//cdn.jsdelivr.net/parse/1.2.9/parse.js', =>
+        Parse.initialize "ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w", "8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3"
 
-  Page = Parse.Object.extend "Page"
+        @options = $.extend
+          el: 'p'
+        , options
 
+        @_Page = Parse.Object.extend "Page"
 
-  Comment = Parse.Object.extend "Comment",
-    {
-      initialize: (attrs, options) ->
-        console.log 'initialize'
-      display: ->
-        "<div class='comment'>#{ @get('commenter') }: #{ @get('body') }</div>"
-    }
+        @_Comment = Parse.Object.extend "Comment",
+          display: ->
+            "<div class='comment'>#{ @get('commenter') }: #{ @get('body') }</div>"
 
-  Commojo = (page) ->
-    Parse.Collection.extend
-      model: Comment
-      query: (new Parse.Query(Comment)).equalTo('page', page)
-      addComment: (index, commentBody, name) ->
-        comment =
+        query = new Parse.Query(@_Page)
+        query.equalTo('url', window.location.href)
+        query.find
+          success: @_onFindPages
+
+    _onFindPages: (results) =>
+      page = results[0] or new @_Page()
+      if results.length
+        @comments = @_setupComments(page)
+        @comments.fetch
+          success: (comments) =>
+            comments.each (comment) => @_showComment(comment)
+      else
+        page.save(url: window.location.href).then (comments) ->
+          @_setupComments(page, comments)
+      @_bindClicks(page)
+
+    _setupComments: (page) =>
+      comments = new (@_Comments(page))()
+      comments.on 'add', (comment) => @_showComment(comment)
+      comments
+
+    _Comments: (page) ->
+      Parse.Collection.extend
+        model: @_Comment
+        query: (new Parse.Query(@_Comment)).equalTo('page', page)
+
+    _bindClicks: (page) ->
+      $(@options.el).on 'click', (e) =>
+        name = prompt('Name')
+        comment = prompt('Enter comment')
+        @comments.create
           page: page
-          elIndex: index
-          body: commentBody
+          elIndex: $(e.target).index()
+          body: comment
           commenter: name
-        @create(comment)
 
-  $('p').on 'click', ->
-    name = prompt('Name')
-    comment = prompt('Enter comment')
-    commojo.addComment $(@).index(), comment, name
-
-  $ ->
-    query = new Parse.Query(Page)
-    query.equalTo('url', window.location.href)
-    query.find
-      success: (results) ->
-        if results.length
-          window.page = results[0]
-          window.commojo = new (Commojo(page))()
-          commojo.fetch
-            success: (comments) ->
-              console.log comments
-              comments.each showComment
-              commojo.on 'add', showComment
-        else
-          window.page = new Page()
-          page.save(url: window.location.href).then ->
-            window.commojo = new (Commojo(page))()
-
-
-showComment = (comment) ->
-  $('p').eq(comment.get('elIndex') - 1).append comment.display()
+    _showComment: (comment) ->
+      $(@options.el).eq(comment.get('elIndex') - 1).append comment.display()
