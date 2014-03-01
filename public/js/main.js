@@ -1,10 +1,10 @@
 (function() {
-  console.log("hello from a require'd coffee file (via assets/js/_helper.coffee)");
+
 
 }).call(this);
 
 (function() {
-  var Comojo,
+  var Comment, Comments, Scripts, Twitter, View,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   require.config({
@@ -15,137 +15,189 @@
 
   require(['jquery'], function($) {
     return new Comojo({
-      el: 'p'
+      el: 'p.commentable',
+      env: 'dev'
     });
   });
 
-  Comojo = (function() {
+  window.Comojo = (function() {
     function Comojo(options) {
-      this._onFindPages = __bind(this._onFindPages, this);
+      this._showComment = __bind(this._showComment, this);
+      this._setupCommentEntry = __bind(this._setupCommentEntry, this);
+      this._bindClicks = __bind(this._bindClicks, this);
       var _this = this;
-      $.when.apply($, [$.getScript('//cdn.jsdelivr.net/parse/1.2.9/parse.js'), $.getScript('https://oauth.io//auth/download/latest/oauth.min.js')]).then(function() {
-        var query;
-        Parse.initialize("ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w", "8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3");
-        _this.options = $.extend({
-          el: 'p'
-        }, options);
-        _this._Page = Parse.Object.extend("Page");
-        _this._Comment = Parse.Object.extend("Comment", {
-          display: function() {
-            return "<div class='comment'>" + (this.get('commenter')) + ": " + (this.get('body')) + "</div>";
-          }
-        });
-        query = new Parse.Query(_this._Page);
-        query.equalTo('url', window.location.href);
-        return query.find({
-          success: _this._onFindPages
-        });
+      this.options = $.extend({
+        el: 'p',
+        url: window.location.href,
+        ouathio: {
+          key: '6bTbWgdrEePCI7uTh9We_BPmULs'
+        },
+        parse: {
+          id: 'ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w',
+          key: '8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3'
+        }
+      }, options);
+      Scripts.fetch().then(function() {
+        Parse.initialize(_this.options.parse.id, _this.options.parse.key);
+        return _this._createPage(Parse.Object.extend("Page"), _this._bindClicks);
       });
     }
 
-    Comojo.prototype._onFindPages = function(results) {
-      var page,
+    Comojo.prototype._createPage = function(Page, cb) {
+      var query,
         _this = this;
-      page = results[0] || new this._Page();
-      if (results.length) {
-        this.comments = this._setupComments(page);
-        this.comments.fetch({
-          success: function(comments) {
-            return comments.each(function(comment) {
-              return _this._showComment(comment);
-            });
-          }
-        });
-      } else {
-        page.save({
-          url: window.location.href
-        }).then(function(comments) {
-          return _this.comments = _this._setupComments(page, comments);
-        });
-      }
-      return this._bindClicks(page);
+      query = new Parse.Query(Page);
+      query.equalTo('url', this.options.url);
+      return query.find().then(function(results) {
+        var page;
+        page = results[0] || new Page();
+        if (results.length) {
+          _this.comments = _this._setupComments(page);
+          _this.comments.fetch();
+        } else {
+          page.save({
+            url: _this.options.url
+          }).then(function(comments) {
+            return _this.comments = _this._setupComments(page, comments);
+          });
+        }
+        return cb(page);
+      });
     };
 
     Comojo.prototype._setupComments = function(page) {
-      var comments,
-        _this = this;
-      comments = new (this._Comments(page))();
-      comments.on('add', function(comment) {
-        return _this._showComment(comment);
-      });
-      return comments;
-    };
-
-    Comojo.prototype._Comments = function(page) {
-      return Parse.Collection.extend({
-        model: this._Comment,
-        query: (new Parse.Query(this._Comment)).equalTo('page', page)
-      });
+      var comments;
+      comments = new (Comments(page))();
+      return comments.on('add', this._showComment);
     };
 
     Comojo.prototype._bindClicks = function(page) {
       var _this = this;
       return $(this.options.el).on('click', function(e) {
-        return _this._ensureAuth(function() {
-          var target;
-          console.log(_this.user);
-          $('body').append("<div class='comment-entry'><img src='" + _this.user.profile_image_url + "' /><h3>" + _this.user.screen_name + "</h3><label>Comment</label><textarea class='input-comment' /></div>");
-          target = $(e.target);
-          $(window).scrollTop(target.position().top);
-          $('.comment-entry').css({
-            position: 'absolute',
-            width: target.outerWidth(true),
-            height: $(document).height() - target.outerHeight(true),
-            "z-index": 9999,
-            top: target.position().top + target.outerHeight(true),
-            left: target.position().left,
-            "background-color": 'rgba(255,255,255,0.9)'
-          });
-          return $('.comment-entry .input-comment').on('keydown', function(e) {
-            if (e.keyCode === 13) {
-              e.preventDefault();
-              _this.comments.create({
-                page: page,
-                elIndex: target.index(),
-                body: $('.input-comment').val(),
-                commenter: _this.user.screen_name
-              });
-              return $('.comment-entry').remove();
-            }
-          });
+        var clicked;
+        clicked = $(e.target);
+        return _this._ensureAuth(function(user) {
+          return _this._setupCommentEntry(user, clicked, page);
         });
       });
     };
 
-    Comojo.prototype._ensureAuth = function(cb) {
-      var t;
-      t = this;
-      if (t.user != null) {
-        return cb();
-      } else {
-        OAuth.initialize('6bTbWgdrEePCI7uTh9We_BPmULs');
-        return OAuth.popup('twitter', function(error, result) {
-          return result.get('/1.1/account/settings.json').done(function(data) {
-            return result.get({
-              url: '/1.1/users/show.json',
-              data: {
-                screen_name: data.screen_name
-              }
-            }).done(function(data) {
-              t.user = data;
-              return cb();
-            });
+    Comojo.prototype._setupCommentEntry = function(user, clicked, page) {
+      var inputComment, onKeyPress,
+        _this = this;
+      $('.input-comment').off('keydown', onKeyPress);
+      $('.comment-entry').remove();
+      $('body').append(View.entry.html(user));
+      $(this.options.el).css({
+        '-webkit-transition': 'margin-left 100ms',
+        "margin-left": '-250px',
+        "width": $(this.options.el).width()
+      });
+      $('.comment-entry').css(View.entry.css(clicked));
+      inputComment = $('.comment-entry .input-comment');
+      inputComment.focus();
+      this.comments.filter(function(f) {
+        return f.get('elIndex') === clicked.index();
+      }).forEach(this._showComment);
+      onKeyPress = function(e) {
+        if (e.keyCode === 13) {
+          e.preventDefault();
+          _this.comments.create({
+            page: page,
+            elIndex: clicked.index(),
+            body: $(e.target).val(),
+            commenter: {
+              name: user.screen_name,
+              avatar: user.profile_image_url
+            }
           });
+          inputComment.off('keydown', onKeyPress);
+          return $('.entry').remove();
+        }
+      };
+      return inputComment.on('keydown', onKeyPress);
+    };
+
+    Comojo.prototype._ensureAuth = function(cb) {
+      var _this = this;
+      if (this.user) {
+        return cb(this.user);
+      } else {
+        Twitter.initialize(this.options.ouathio.key);
+        return Twitter.getUser(function(u) {
+          _this.user = u;
+          return cb(u);
         });
       }
     };
 
     Comojo.prototype._showComment = function(comment) {
-      return $(this.options.el).eq(comment.get('elIndex') - 1).append(comment.display());
+      return $('.comment-entry .comments').append(comment.display());
     };
 
     return Comojo;
 
   })();
+
+  View = {
+    entry: {
+      html: function(user) {
+        return "<div class='comment-entry'>         <img class='entry' src='" + user.profile_image_url + "' />         <textarea class='input-comment entry' placeholder='Sassy fucking comment...'           style = 'border: none; border-bottom: 1px solid grey; outline: none; re'          />         <div class='comments'></div>      </div>";
+      },
+      css: function(target) {
+        return {
+          position: 'absolute',
+          width: 250,
+          top: target.position().top,
+          right: 0,
+          "z-index": 9999,
+          "background-color": 'rgba(255,255,255,0.9)'
+        };
+      }
+    },
+    comment: {
+      html: function() {
+        var c;
+        c = this.get('commenter');
+        return "<div class='comment'>         <img src='" + c.avatar + "'/>         <p>" + c.name + ": " + (this.get('body')) + "</p>      </div>";
+      }
+    }
+  };
+
+  Scripts = {
+    resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js'],
+    fetch: function() {
+      return $.when.apply($, this.resources.map($.getScript));
+    }
+  };
+
+  Twitter = {
+    initialize: function(key) {
+      return OAuth.initialize(key);
+    },
+    getUser: function(cb) {
+      return cb({
+        screen_name: 'aesny',
+        profile_image_url: 'http://pbs.twimg.com/profile_images/1628839301/309180_1980408664990_1086360060_31761796_2384751_n_normal.jpg'
+      });
+    }
+  };
+
+  Comments = function(page) {
+    var comment;
+    comment = Comment();
+    return Parse.Collection.extend({
+      model: comment,
+      query: (new Parse.Query(comment)).equalTo('page', page)
+    });
+  };
+
+  Comment = function() {
+    return Parse.Object.extend("Comment", {
+      display: function() {
+        return View.comment.html.apply(this);
+      }
+    });
+  };
 
 }).call(this);

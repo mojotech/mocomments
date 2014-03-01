@@ -1,99 +1,145 @@
-#= require "_helper"
+#= require "comojo"
 
-# requirejs makes life a lot easier when dealing with more than one
-# javascript file and any sort of dependencies, and loads faster.
-
-# for more info on require config, see http://requirejs.org/docs/api.html#config
 require.config
   paths:
     jquery: '//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.0/jquery.min'
 require ['jquery'], ($) ->
-  new Comojo(el: 'p')
+  new Comojo
+    el: 'p.commentable'
+    env: 'dev'
 
-class Comojo
+class window.Comojo
   constructor: (options) ->
-    $.when.apply($, [$.getScript('//cdn.jsdelivr.net/parse/1.2.9/parse.js'), $.getScript('https://oauth.io//auth/download/latest/oauth.min.js')])
-    .then =>
-      Parse.initialize "ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w", "8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3"
+    @options = $.extend
+      el: 'p'
+      url: window.location.href
+      ouathio:
+        key: '6bTbWgdrEePCI7uTh9We_BPmULs'
+      parse:
+        id: 'ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w'
+        key: '8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3'
+    , options
 
-      @options = $.extend
-        el: 'p'
-      , options
+    Scripts.fetch().then =>
+      Parse.initialize @options.parse.id, @options.parse.key
+      @_createPage Parse.Object.extend("Page"), @_bindClicks
 
-      @_Page = Parse.Object.extend "Page"
-
-      @_Comment = Parse.Object.extend "Comment",
-        display: ->
-          "<div class='comment'>#{ @get('commenter') }: #{ @get('body') }</div>"
-
-      query = new Parse.Query(@_Page)
-      query.equalTo('url', window.location.href)
-      query.find
-        success: @_onFindPages
-
-  _onFindPages: (results) =>
-    page = results[0] or new @_Page()
-    if results.length
-      @comments = @_setupComments(page)
-      @comments.fetch
-        success: (comments) =>
-          comments.each (comment) => @_showComment(comment)
-    else
-      page.save(url: window.location.href).then (comments) =>
-        @comments = @_setupComments(page, comments)
-    @_bindClicks(page)
+  _createPage: (Page, cb) ->
+    query = new Parse.Query(Page)
+    query.equalTo 'url', @options.url
+    query.find().then (results) =>
+      page = results[0] or new Page()
+      if results.length
+        @comments = @_setupComments page
+        @comments.fetch()
+      else
+        page.save(url: @options.url).then (comments) =>
+          @comments = @_setupComments page, comments
+      cb page
 
   _setupComments: (page) ->
-    comments = new (@_Comments(page))()
-    comments.on 'add', (comment) => @_showComment(comment)
-    comments
+    comments = new (Comments page)()
+    comments.on 'add', @_showComment
 
-  _Comments: (page) ->
-    Parse.Collection.extend
-      model: @_Comment
-      query: (new Parse.Query(@_Comment)).equalTo('page', page)
-
-  _bindClicks: (page) ->
+  _bindClicks: (page) =>
     $(@options.el).on 'click', (e) =>
-      @_ensureAuth =>
-        console.log @user
-        $('body').append "<div class='comment-entry'><img src='#{@user.profile_image_url}' /><h3>#{@user.screen_name}</h3><label>Comment</label><textarea class='input-comment' /></div>"
-        target = $(e.target)
-        $(window).scrollTop target.position().top
-        $('.comment-entry').css
-          position: 'absolute'
-          width: target.outerWidth(true)
-          height: $(document).height() - target.outerHeight(true)
-          "z-index": 9999
-          top: target.position().top + target.outerHeight(true)
-          left: target.position().left
-          "background-color": 'rgba(255,255,255,0.9)'
-        $('.comment-entry .input-comment').on 'keydown', (e) =>
-          if e.keyCode is 13
-            e.preventDefault()
-            @comments.create
-              page: page
-              elIndex: target.index()
-              body: $('.input-comment').val()
-              commenter: @user.screen_name
-            $('.comment-entry').remove()
+      clicked = $ e.target
+      @_ensureAuth (user) =>
+        @_setupCommentEntry user, clicked, page
+
+  _setupCommentEntry: (user, clicked, page) =>
+    $('.input-comment').off 'keydown', onKeyPress
+    $('.comment-entry').remove()
+    $('body').append View.entry.html(user)
+    $(@options.el).css
+      '-webkit-transition': 'margin-left 100ms'
+      "margin-left": '-250px'
+      "width": $(@options.el).width()
+    $('.comment-entry').css View.entry.css(clicked)
+    inputComment = $ '.comment-entry .input-comment'
+    inputComment.focus()
+    @comments
+      .filter (f) ->
+        f.get('elIndex') is clicked.index()
+      .forEach @_showComment
+    onKeyPress = (e) =>
+      if e.keyCode is 13
+        e.preventDefault()
+        @comments.create
+          page: page
+          elIndex: clicked.index()
+          body: $(e.target).val()
+          commenter:
+            name: user.screen_name
+            avatar: user.profile_image_url
+        inputComment.off 'keydown', onKeyPress
+        $('.entry').remove()
+        # $(@options.el).attr 'style', ''
+    inputComment.on 'keydown', onKeyPress
 
   _ensureAuth: (cb) ->
-    t = this
-    if t.user?
-      cb()
+    if @user
+      cb(@user)
     else
-      OAuth.initialize('6bTbWgdrEePCI7uTh9We_BPmULs')
-      OAuth.popup 'twitter', (error, result) ->
-        result.get('/1.1/account/settings.json').done (data) ->
-          result.get(
-            url: '/1.1/users/show.json',
-            data:
-              screen_name: data.screen_name
-            ).done (data) ->
-              t.user = data
-              cb()
+      Twitter.initialize @options.ouathio.key
+      Twitter.getUser (u) =>
+        @user = u
+        cb(u)
 
+  _showComment: (comment) =>
+    $('.comment-entry .comments').append comment.display()
 
-  _showComment: (comment) ->
-    $(@options.el).eq(comment.get('elIndex') - 1).append comment.display()
+View =
+  entry:
+    html: (user) ->
+      "<div class='comment-entry'> \
+        <img class='entry' src='#{user.profile_image_url}' /> \
+        <textarea class='input-comment entry' placeholder='Sassy fucking comment...' \
+          style = 'border: none; border-bottom: 1px solid grey; outline: none; re'
+          /> \
+        <div class='comments'></div>
+      </div>"
+    css: (target) ->
+      position: 'absolute'
+      width: 250
+      top: target.position().top
+      right: 0
+      "z-index": 9999
+      "background-color": 'rgba(255,255,255,0.9)'
+  comment:
+    html: ->
+      c = @get('commenter')
+      "<div class='comment'> \
+        <img src='#{ c.avatar }'/> \
+        <p>#{ c.name }: #{ @get('body') }</p>
+      </div>"
+
+Scripts =
+  resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js' ]
+  fetch: ->
+    $.when.apply $, @resources.map $.getScript
+
+Twitter =
+  initialize: (key) ->
+    OAuth.initialize key
+  getUser: (cb) ->
+    cb
+      screen_name: 'aesny'
+      profile_image_url: 'http://pbs.twimg.com/profile_images/1628839301/309180_1980408664990_1086360060_31761796_2384751_n_normal.jpg'
+    # OAuth.popup 'twitter', (error, result) ->
+    #   result.get('/1.1/account/settings.json').done (data) ->
+    #     result.get
+    #       url: '/1.1/users/show.json',
+    #       data:
+    #         screen_name: data.screen_name
+    #       success: cb
+
+Comments = (page) ->
+  comment = Comment()
+  Parse.Collection.extend
+    model: comment
+    query: (new Parse.Query comment).equalTo 'page', page
+
+Comment = ->
+  Parse.Object.extend "Comment",
+    display: -> View.comment.html.apply(this)
