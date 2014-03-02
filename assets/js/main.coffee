@@ -98,7 +98,7 @@ View =
       "<div class='comment-entry'> \
         <img class='entry' src='#{user.profile_image_url}' style = 'border-radius: 50%;'/> \
         <textarea class='input-comment entry' placeholder='Sassy fucking comment...' \
-          style = 'border: none; border-bottom: 1px solid grey; outline: none; re'
+          style = 'border: none;  outline: none; resize: none;'
           /> \
         <div class='comments'></div>
       </div>"
