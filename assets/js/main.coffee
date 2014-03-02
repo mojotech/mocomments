@@ -96,7 +96,7 @@ View =
     html: (user) ->
       "<div class='comment-entry'> \
         <img class='entry' src='#{user.profile_image_url}' style = 'border-radius: 50%;'/> \
-        <textarea class='input-comment entry' placeholder='Sassy fucking comment...' \
+        <textarea class='input-comment entry' placeholder='Leave a note...' \
           style = 'border: none;  outline: none; resize: none;'
           /> \
         <div class='comments'></div>
