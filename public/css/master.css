@@ -253,9 +253,7 @@ body {
   padding: 50px;
 }
 .comment {
-  background-color: #efefef;
-  padding: 20px;
-}
-.comment:nth-child(even) {
-  background-color: #cfcfcf;
+  margin: 20px 0px;
+  padding-top: 20px;
+  border-top: #eee solid 1px;
 }

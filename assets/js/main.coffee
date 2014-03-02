@@ -93,7 +93,7 @@ View =
   entry:
     html: (user) ->
       "<div class='comment-entry'> \
-        <img class='entry' src='#{user.profile_image_url}' /> \
+        <img class='entry' src='#{user.profile_image_url}' style = 'border-radius: 50%;'/> \
         <textarea class='input-comment entry' placeholder='Sassy fucking comment...' \
           style = 'border: none; border-bottom: 1px solid grey; outline: none; re'
           /> \
@@ -110,7 +110,7 @@ View =
     html: ->
       c = @get('commenter')
       "<div class='comment'> \
-        <img src='#{ c.avatar }'/> \
+        <img src='#{ c.avatar }' style='border-radius: 50%' /> \
         <p>#{ c.name }: #{ @get('body') }</p>
       </div>"
 
@@ -123,16 +123,17 @@ Twitter =
   initialize: (key) ->
     OAuth.initialize key
   getUser: (cb) ->
-    cb
-      screen_name: 'aesny'
-      profile_image_url: 'http://pbs.twimg.com/profile_images/1628839301/309180_1980408664990_1086360060_31761796_2384751_n_normal.jpg'
-    # OAuth.popup 'twitter', (error, result) ->
-    #   result.get('/1.1/account/settings.json').done (data) ->
-    #     result.get
-    #       url: '/1.1/users/show.json',
-    #       data:
-    #         screen_name: data.screen_name
-    #       success: cb
+    if u = localStorage.getItem('comojoUser')
+      return cb JSON.parse u
+    OAuth.popup 'twitter', (error, result) ->
+      result.get('/1.1/account/settings.json').done (data) ->
+        result.get
+          url: '/1.1/users/show.json',
+          data:
+            screen_name: data.screen_name
+          success: (user) ->
+            localStorage.setItem 'comojoUser', JSON.stringify(user)
+            cb(user)
 
 Comments = (page) ->
   comment = Comment()

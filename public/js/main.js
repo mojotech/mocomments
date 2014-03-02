@@ -142,7 +142,7 @@
   View = {
     entry: {
       html: function(user) {
-        return "<div class='comment-entry'>         <img class='entry' src='" + user.profile_image_url + "' />         <textarea class='input-comment entry' placeholder='Sassy fucking comment...'           style = 'border: none; border-bottom: 1px solid grey; outline: none; re'          />         <div class='comments'></div>      </div>";
+        return "<div class='comment-entry'>         <img class='entry' src='" + user.profile_image_url + "' style = 'border-radius: 50%;'/>         <textarea class='input-comment entry' placeholder='Sassy fucking comment...'           style = 'border: none; border-bottom: 1px solid grey; outline: none; re'          />         <div class='comments'></div>      </div>";
       },
       css: function(target) {
         return {
@@ -159,7 +159,7 @@
       html: function() {
         var c;
         c = this.get('commenter');
-        return "<div class='comment'>         <img src='" + c.avatar + "'/>         <p>" + c.name + ": " + (this.get('body')) + "</p>      </div>";
+        return "<div class='comment'>         <img src='" + c.avatar + "' style='border-radius: 50%' />         <p>" + c.name + ": " + (this.get('body')) + "</p>      </div>";
       }
     }
   };
@@ -176,9 +176,23 @@
       return OAuth.initialize(key);
     },
     getUser: function(cb) {
-      return cb({
-        screen_name: 'aesny',
-        profile_image_url: 'http://pbs.twimg.com/profile_images/1628839301/309180_1980408664990_1086360060_31761796_2384751_n_normal.jpg'
+      var u;
+      if (u = localStorage.getItem('comojoUser')) {
+        return cb(JSON.parse(u));
+      }
+      return OAuth.popup('twitter', function(error, result) {
+        return result.get('/1.1/account/settings.json').done(function(data) {
+          return result.get({
+            url: '/1.1/users/show.json',
+            data: {
+              screen_name: data.screen_name
+            },
+            success: function(user) {
+              localStorage.setItem('comojoUser', JSON.stringify(user));
+              return cb(user);
+            }
+          });
+        });
       });
     }
   };
