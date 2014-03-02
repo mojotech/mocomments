@@ -77,7 +77,6 @@ class window.Comojo
             avatar: user.profile_image_url
         inputComment.off 'keydown', onKeyPress
         $('.entry').remove()
-        # $(@options.el).attr 'style', ''
     inputComment.on 'keydown', onKeyPress
 
   _ensureAuth: (cb) ->
@@ -108,7 +107,6 @@ View =
       top: target.position().top
       right: 0
       "z-index": 9999
-      "background-color": 'rgba(255,255,255,0.9)'
   comment:
     html: ->
       c = @get('commenter')
