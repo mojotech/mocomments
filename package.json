@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "roots-watch": "node_modules/roots/bin/roots watch"
+  },
+  "dev-dependencies": {
+    "roots": "~2.1.2"
+  }
+}
