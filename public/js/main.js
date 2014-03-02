@@ -96,6 +96,10 @@
       $('.comment-entry').css(View.entry.css(clicked));
       inputComment = $('.comment-entry .input-comment');
       inputComment.focus();
+      inputComment.on('input', function() {
+        inputComment.height('');
+        return inputComment.height(inputComment.prop('scrollHeight'));
+      });
       this.comments.filter(function(f) {
         return f.get('elIndex') === clicked.index();
       }).forEach(this._showComment);

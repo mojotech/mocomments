@@ -58,6 +58,9 @@ class window.Comojo
     $('.comment-entry').css View.entry.css(clicked)
     inputComment = $ '.comment-entry .input-comment'
     inputComment.focus()
+    inputComment.on 'input', ->
+      inputComment.height ''
+      inputComment.height inputComment.prop 'scrollHeight'
     @comments
       .filter (f) ->
         f.get('elIndex') is clicked.index()
