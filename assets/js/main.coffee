@@ -93,14 +93,7 @@ class window.Comojo
 
 View =
   entry:
-    html: (user) ->
-      "<div class='comment-entry'> \
-        <img class='entry' src='#{user.profile_image_url}' style = 'border-radius: 50%;'/> \
-        <textarea class='input-comment entry' placeholder='Leave a note...' \
-          style = 'border: none;  outline: none; resize: none;'
-          /> \
-        <div class='comments'></div>
-      </div>"
+    html: templates.comment_entry
     css: (target) ->
       position: 'absolute'
       width: 250
@@ -108,12 +101,10 @@ View =
       right: 0
       "z-index": 9999
   comment:
-    html: ->
-      c = @get('commenter')
-      "<div class='comment'> \
-        <img src='#{ c.avatar }' style='border-radius: 50%' /> \
-        <p>#{ c.name }: #{ @get('body') }</p>
-      </div>"
+    html: -> templates.comment({
+        c: @get('commenter')
+        body: @get('body')
+      })
 
 Scripts =
   resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js' ]
