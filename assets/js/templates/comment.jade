@@ -1,3 +1,5 @@
 .comment
-  img(src="#{c.avatar}", style='border-radius: 50%')
-  p #{c.name}: #{body}
+  .comment-info
+    img.comment-photo(src="#{c.avatar}")
+    h4.comment-author-name #{c.name}
+  p.comment-body #{body}
