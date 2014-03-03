@@ -72,18 +72,6 @@ class window.Comojo
         @user = u
         cb(u)
 
-View =
-  entry:
-    html: templates.comment_entry
-    css: (target) ->
-
-  comment:
-    html: -> templates.comment({
-        c: @get('commenter')
-        body: @get('body')
-      })
-
-
 CommentsView = (page, clicked) -> Parse.View.extend
   className: 'comment-entry'
 
@@ -151,4 +139,7 @@ Comments = (page) ->
 
 Comment = ->
   Parse.Object.extend "Comment",
-    display: -> View.comment.html.apply(this)
+    display: ->
+      templates.comment
+        c: @get('commenter')
+        body: @get('body')
