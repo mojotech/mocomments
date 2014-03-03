@@ -60,7 +60,7 @@ class window.Comojo
     $('.input-comment').focus()
     $(@options.el).css
       '-webkit-transition': 'margin-left 100ms'
-      "margin-left": '-250px'
+      "margin-left": '-150px'
       "width": $(@options.el).width()
 
   _ensureAuth: (cb) ->
