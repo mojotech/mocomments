@@ -48,36 +48,20 @@ class window.Comojo
         @_setupCommentEntry user, clicked, page
 
   _setupCommentEntry: (user, clicked, page) =>
-    $('.input-comment').off 'keydown', onKeyPress
-    $('.comment-entry').remove()
-    $('body').append View.entry.html(user)
+    @commentsView.remove() if @commentsView
+    @commentsView = new (CommentsView(page, clicked))
+      model: $.extend user,
+        target: clicked
+        comments:
+          raw: @comments
+          filtered: @comments.filter (f) ->
+            f.get('elIndex') is clicked.index()
+    $('body').append @commentsView.render().el
+    $('.input-comment').focus()
     $(@options.el).css
       '-webkit-transition': 'margin-left 100ms'
       "margin-left": '-250px'
       "width": $(@options.el).width()
-    $('.comment-entry').css View.entry.css(clicked)
-    inputComment = $ '.comment-entry .input-comment'
-    inputComment.focus()
-    inputComment.on 'input', ->
-      inputComment.height ''
-      inputComment.height inputComment.prop 'scrollHeight'
-    @comments
-      .filter (f) ->
-        f.get('elIndex') is clicked.index()
-      .forEach @_showComment
-    onKeyPress = (e) =>
-      if e.keyCode is 13
-        e.preventDefault()
-        @comments.create
-          page: page
-          elIndex: clicked.index()
-          body: $(e.target).val()
-          commenter:
-            name: user.screen_name
-            avatar: user.profile_image_url
-        inputComment.off 'keydown', onKeyPress
-        $('.entry').remove()
-    inputComment.on 'keydown', onKeyPress
 
   _ensureAuth: (cb) ->
     if @user
@@ -88,23 +72,55 @@ class window.Comojo
         @user = u
         cb(u)
 
-  _showComment: (comment) =>
-    $('.comment-entry .comments').append comment.display()
-
 View =
   entry:
     html: templates.comment_entry
     css: (target) ->
-      position: 'absolute'
-      width: 250
-      top: target.position().top
-      right: 0
-      "z-index": 9999
+
   comment:
     html: -> templates.comment({
         c: @get('commenter')
         body: @get('body')
       })
+
+
+CommentsView = (page, clicked) -> Parse.View.extend
+  className: 'comment-entry'
+
+  template: templates.comment_entry
+
+  events:
+    'input .input-comment': 'autoGrow'
+    'keydown .input-comment': 'onKeyPress'
+
+  render: ->
+    @$el.html(@template(@model))
+    @$el.css
+      position: 'absolute'
+      width: 250
+      top: clicked.position().top
+      right: 0
+      "z-index": 9999
+    @
+
+  autoGrow: (e) ->
+    $t = $(e.target)
+    $t.height ''
+    $t.height $t.prop 'scrollHeight'
+
+  onKeyPress: (e) ->
+    if e.keyCode is 13
+      e.preventDefault()
+      @model.comments.raw.create
+        page: page
+        elIndex: clicked.index()
+        body: $(e.target).val()
+        commenter:
+          name: @model.screen_name
+          avatar: @model.profile_image_url
+      @$('.comments').append @model.comments.raw.last().display()
+      @$('.entry').remove()
+
 
 Scripts =
   resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js' ]
