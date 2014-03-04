@@ -38,11 +38,11 @@ class window.Comojo
     query.find().then (results) =>
       page = results[0] or new Page()
       if results.length
-        @comments = @_setupComments page
+        @comments = new (Comments page)()
         @comments.fetch().then @_addIndicators
       else
-        page.save(url: @options.url).then (comments) =>
-          @comments = @_setupComments page, comments
+        page.save(url: @options.url).then =>
+          @comments = new (Comments page)()
       cb page
 
   _addIndicators: (comments) =>
@@ -54,10 +54,6 @@ class window.Comojo
     commentsByGroup = comments.groupBy((comment) -> comment.get('elIndex'))
     @_.object @_.keys(commentsByGroup), @_.map (commentsByGroup), (v, k) ->
       v.length
-
-  _setupComments: (page) ->
-    comments = new (Comments page)()
-    comments.on 'add', @_showComment
 
   _bindClicks: (page) =>
     @$commentable.on 'click', '.indicator', (e) =>
