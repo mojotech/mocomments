@@ -3,9 +3,10 @@
 require.config
   paths:
     jquery: '//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.0/jquery.min'
+
 require ['jquery'], ($) ->
   new Comojo
-    el: 'p.commentable'
+    commentable: 'p.commentable'
     container: '.contain'
     env: 'dev'
 
@@ -20,7 +21,11 @@ class window.Comojo
         id: 'ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w'
         key: '8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3'
     , options
-    $(@options.el).addClass 'mc-indicated'
+
+    @$commentable = $(@options.commentable)
+
+    @$commentable.addClass 'mc-indicated'
+
     Scripts.fetch().then =>
       Parse.initialize @options.parse.id, @options.parse.key
       @_ = Parse._
@@ -41,9 +46,8 @@ class window.Comojo
 
   _addIndicators: (comments) =>
     countsByEl = @_countsByEl(comments)
-    $(@options.el).each (i, el) ->
+    @$commentable.each (i, el) ->
       $(el).append templates.indicator(count: (countsByEl[i] or '+'))
-
 
   _countsByEl: (comments) ->
     commentsByGroup = comments.groupBy((comment) -> comment.get('elIndex'))
@@ -55,7 +59,7 @@ class window.Comojo
     comments.on 'add', @_showComment
 
   _bindClicks: (page) =>
-    $(@options.el).on 'click', '.indicator', (e) =>
+    @$commentable.on 'click', '.indicator', (e) =>
       clicked = $(e.target).parent()
       @_ensureAuth (user) =>
         @_setupCommentEntry user, clicked, page
@@ -68,7 +72,7 @@ class window.Comojo
         comments:
           raw: @comments
           filtered: @comments.filter (f) =>
-            f.get('elIndex') is $(@options.el).index(clicked)
+            f.get('elIndex') is @$commentable.index(clicked)
     $('body').append @commentsView.render().el
     $('.input-comment').focus()
     $(@options.container).css
@@ -77,7 +81,7 @@ class window.Comojo
     $(@options.container).css
       '-webkit-transition': 'left 150ms'
       "left": "-150px"
-      "width": $(@options.el).outerWidth(true)
+      "width": @$commentable.width()
 
   _ensureAuth: (cb) ->
     if @user
@@ -128,7 +132,7 @@ CommentsView = (page, clicked, $container, options) -> Parse.View.extend
     e.preventDefault() if e
     @model.comments.raw.create
       page: page
-      elIndex: $(options.el).index(clicked)
+      elIndex: $(options.commentable).index(clicked)
       body: @$('.input-comment').val()
       commenter:
         name: @model.screen_name
