@@ -108,6 +108,7 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
       top: clicked.offset().top
       right: 0
       "z-index": 9999
+    Parse._.defer => $('body').on 'click.mc-close-comment-entry', (e) => @close e
     @
 
   autoGrow: (e) ->
@@ -121,12 +122,17 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
       @save()
 
   close: (e) ->
-    e.preventDefault()
+    e.preventDefault() if e
+    if $(e.target).hasClass('indicator') or $(e.target).hasClass('comment-entry') or ($('.comment-entry').has(e.target).length and not $(e.target).hasClass('close-link'))
+      return false
+    $('body').off 'click.mc-close-comment-entry'
     $container.attr 'style', ' '
     @remove()
 
   save: (e) ->
-    e.preventDefault() if e
+    if e
+      e.stopImmediatePropagation()
+      e.preventDefault()
     return unless body = @$('.input-comment').val()
     @model.comments.raw.create
       page: page
