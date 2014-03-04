@@ -127,10 +127,11 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
 
   save: (e) ->
     e.preventDefault() if e
+    return unless body = @$('.input-comment').val()
     @model.comments.raw.create
       page: page
       elIndex: $commentable.index(clicked)
-      body: @$('.input-comment').val()
+      body: body
       commenter:
         name: @model.screen_name
         avatar: @model.profile_image_url
