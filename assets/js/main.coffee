@@ -22,10 +22,10 @@ class window.Comojo
         key: '8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3'
     , options
 
-    @$commentable = $(@options.commentable)
+    @$container = $(@options.container)
+    @$commentable = @$container.find(@options.commentable)
 
     @$commentable.addClass 'mc-indicated'
-
     Scripts.fetch().then =>
       Parse.initialize @options.parse.id, @options.parse.key
       @_ = Parse._
@@ -66,7 +66,7 @@ class window.Comojo
 
   _setupCommentEntry: (user, clicked, page) =>
     @commentsView.remove() if @commentsView
-    @commentsView = new (CommentsView(page, clicked, $(@options.container), @options))
+    @commentsView = new (CommentsView(page, clicked, @$container, @$commentable))
       model: $.extend user,
         target: clicked
         comments:
@@ -75,10 +75,10 @@ class window.Comojo
             f.get('elIndex') is @$commentable.index(clicked)
     $('body').append @commentsView.render().el
     $('.input-comment').focus()
-    $(@options.container).css
+    @$container.css
       'position': 'relative'
       'left': 0
-    $(@options.container).css
+    @$container.css
       '-webkit-transition': 'left 150ms'
       "left": "-150px"
       "width": @$commentable.width()
@@ -92,7 +92,7 @@ class window.Comojo
         @user = u
         cb(u)
 
-CommentsView = (page, clicked, $container, options) -> Parse.View.extend
+CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
   className: 'comment-entry'
 
   template: templates.comment_entry
@@ -132,7 +132,7 @@ CommentsView = (page, clicked, $container, options) -> Parse.View.extend
     e.preventDefault() if e
     @model.comments.raw.create
       page: page
-      elIndex: $(options.commentable).index(clicked)
+      elIndex: $commentable.index(clicked)
       body: @$('.input-comment').val()
       commenter:
         name: @model.screen_name
