@@ -72,13 +72,14 @@ class window.Comojo
             f.get('elIndex') is @$commentable.index(clicked)
     $('body').append @commentsView.render().el
     $('.input-comment').focus()
+    right = if r = @$container.css('right') is 'auto' then 0 else parseInt(r, 10)
     @$container.css
       'position': 'relative'
       'left': 'auto'
-      'right': 0
+      'right': right
     @$container.css
       '-webkit-transition': 'right 150ms'
-      "right": Math.max(250 - ($('body').width() - @$container[0].getBoundingClientRect().right), 0)
+      "right": Math.max(250 - ($('body').width() - @$container[0].getBoundingClientRect().right), right)
       "width": @$container.width()
 
   _ensureAuth: (cb) ->
