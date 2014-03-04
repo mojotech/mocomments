@@ -74,10 +74,11 @@ class window.Comojo
     $('.input-comment').focus()
     @$container.css
       'position': 'relative'
-      'left': 0
+      'left': 'auto'
+      'right': 0
     @$container.css
-      '-webkit-transition': 'left 150ms'
-      "left": "-150px"
+      '-webkit-transition': 'right 150ms'
+      "right": Math.max(250 - ($('body').width() - @$container[0].getBoundingClientRect().right), 0)
       "width": @$container.width()
 
   _ensureAuth: (cb) ->
