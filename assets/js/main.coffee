@@ -135,6 +135,7 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
         name: @model.screen_name
         avatar: @model.profile_image_url
     @$('.comments').append @model.comments.raw.last().display()
+    $(clicked).find('.indicator').text(@$('.comments .comment').length)
     @$('.entry').remove()
 
 
