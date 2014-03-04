@@ -1,5 +1,7 @@
 img.entry.comment-photo(src=profile_image_url)
-textarea.input-comment.entry(placeholder='a formal comment')
+textarea.input-comment.entry(placeholder='Leave a note...')
+a.save-link.entry.comment-link(href="#save") Save
+a.close-link.comment-link(href='') Close
 .comments
   each comment in comments.filtered
     !=comment.display()

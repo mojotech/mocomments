@@ -50,7 +50,7 @@ class window.Comojo
 
   _setupCommentEntry: (user, clicked, page) =>
     @commentsView.remove() if @commentsView
-    @commentsView = new (CommentsView(page, clicked))
+    @commentsView = new (CommentsView(page, clicked, $(@options.container)))
       model: $.extend user,
         target: clicked
         comments:
@@ -74,7 +74,7 @@ class window.Comojo
         @user = u
         cb(u)
 
-CommentsView = (page, clicked) -> Parse.View.extend
+CommentsView = (page, clicked, $container) -> Parse.View.extend
   className: 'comment-entry'
 
   template: templates.comment_entry
@@ -82,6 +82,8 @@ CommentsView = (page, clicked) -> Parse.View.extend
   events:
     'input .input-comment': 'autoGrow'
     'keydown .input-comment': 'onKeyPress'
+    'click .save-link': 'save'
+    'click .close-link': 'close'
 
   render: ->
     @$el.html(@template(@model))
@@ -101,15 +103,24 @@ CommentsView = (page, clicked) -> Parse.View.extend
   onKeyPress: (e) ->
     if e.keyCode is 13
       e.preventDefault()
-      @model.comments.raw.create
-        page: page
-        elIndex: clicked.index()
-        body: $(e.target).val()
-        commenter:
-          name: @model.screen_name
-          avatar: @model.profile_image_url
-      @$('.comments').append @model.comments.raw.last().display()
-      @$('.entry').remove()
+      @save()
+
+  close: (e) ->
+    e.preventDefault()
+    $container.attr 'style', ' '
+    @remove()
+
+  save: (e) ->
+    e.preventDefault() if e
+    @model.comments.raw.create
+      page: page
+      elIndex: clicked.index()
+      body: @$('.input-comment').val()
+      commenter:
+        name: @model.screen_name
+        avatar: @model.profile_image_url
+    @$('.comments').append @model.comments.raw.last().display()
+    @$('.entry').remove()
 
 
 Scripts =
