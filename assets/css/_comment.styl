@@ -1,14 +1,13 @@
 active-color = rgb(40, 186, 0)
 
-
 .mc-indicated
   position relative
   padding-right 30px
 
 .mc-indicated
   .indicator
+    opacity 0
     cursor pointer
-    display none
     width 30px
     height 30px
     text-align center
@@ -18,9 +17,11 @@ active-color = rgb(40, 186, 0)
     right 0
     background-color #efefef
     border-radius 4px
+  .indicator.faded
+    opacity 0.5
   &:hover
     .indicator
-      display block
+      opacity 1
 
 .comment-link
   color inherit
