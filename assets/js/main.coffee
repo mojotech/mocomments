@@ -6,6 +6,7 @@ require.config
 require ['jquery'], ($) ->
   new Comojo
     el: 'p.commentable'
+    container: '.contain'
     env: 'dev'
 
 class window.Comojo
@@ -58,9 +59,10 @@ class window.Comojo
             f.get('elIndex') is clicked.index()
     $('body').append @commentsView.render().el
     $('.input-comment').focus()
-    $(@options.el).css
-      '-webkit-transition': 'margin-left 100ms'
-      "margin-left": '-150px'
+    $(@options.container).css 'margin-left': $(@options.container).css('margin-left')
+    $(@options.container).css
+      '-webkit-transition': 'margin-left 150ms'
+      "margin-left": "-150px"
       "width": $(@options.el).width()
 
   _ensureAuth: (cb) ->
