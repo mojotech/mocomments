@@ -42,7 +42,7 @@ class window.Comojo
   _addIndicators: (comments) =>
     countsByEl = @_countsByEl(comments)
     $(@options.el).each (i, el) ->
-      $(el).append templates.indicator(count: (countsByEl[i + 1] or '+'))
+      $(el).append templates.indicator(count: (countsByEl[i] or '+'))
 
 
   _countsByEl: (comments) ->
@@ -62,13 +62,13 @@ class window.Comojo
 
   _setupCommentEntry: (user, clicked, page) =>
     @commentsView.remove() if @commentsView
-    @commentsView = new (CommentsView(page, clicked, $(@options.container)))
+    @commentsView = new (CommentsView(page, clicked, $(@options.container), @options))
       model: $.extend user,
         target: clicked
         comments:
           raw: @comments
-          filtered: @comments.filter (f) ->
-            f.get('elIndex') is clicked.index()
+          filtered: @comments.filter (f) =>
+            f.get('elIndex') is $(@options.el).index(clicked)
     $('body').append @commentsView.render().el
     $('.input-comment').focus()
     $(@options.container).css
@@ -88,7 +88,7 @@ class window.Comojo
         @user = u
         cb(u)
 
-CommentsView = (page, clicked, $container) -> Parse.View.extend
+CommentsView = (page, clicked, $container, options) -> Parse.View.extend
   className: 'comment-entry'
 
   template: templates.comment_entry
@@ -128,7 +128,7 @@ CommentsView = (page, clicked, $container) -> Parse.View.extend
     e.preventDefault() if e
     @model.comments.raw.create
       page: page
-      elIndex: clicked.index()
+      elIndex: $(options.el).index(clicked)
       body: @$('.input-comment').val()
       commenter:
         name: @model.screen_name
