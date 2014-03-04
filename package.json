@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "roots-watch": "node_modules/roots/bin/roots watch"
+    "roots-watch": "node_modules/roots/bin/roots watch",
+    "roots-deploy": "node_modules/roots/bin/roots deploy --gh-pages"
   },
   "devDependencies": {
     "roots": "~2.1.2"
