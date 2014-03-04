@@ -77,7 +77,7 @@ class window.Comojo
     $(@options.container).css
       '-webkit-transition': 'left 150ms'
       "left": "-150px"
-      "width": $(@options.el).width()
+      "width": $(@options.el).outerWidth(true)
 
   _ensureAuth: (cb) ->
     if @user
