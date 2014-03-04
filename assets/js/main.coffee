@@ -26,6 +26,7 @@ class window.Comojo
     @$commentable = @$container.find(@options.commentable)
 
     @$commentable.addClass 'mc-indicated'
+
     Scripts.fetch().then =>
       Parse.initialize @options.parse.id, @options.parse.key
       @_ = Parse._
@@ -81,7 +82,7 @@ class window.Comojo
     @$container.css
       '-webkit-transition': 'left 150ms'
       "left": "-150px"
-      "width": @$commentable.width()
+      "width": @$container.width()
 
   _ensureAuth: (cb) ->
     if @user
