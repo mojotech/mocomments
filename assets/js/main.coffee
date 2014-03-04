@@ -20,9 +20,10 @@ class window.Comojo
         id: 'ZPbImnCfvuyidc6cJjI6dVSq5nOJJp5OWMiUQh6w'
         key: '8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3'
     , options
-
+    $(@options.el).addClass 'mc-indicated'
     Scripts.fetch().then =>
       Parse.initialize @options.parse.id, @options.parse.key
+      @_ = Parse._
       @_createPage Parse.Object.extend("Page"), @_bindClicks
 
   _createPage: (Page, cb) ->
@@ -32,19 +33,30 @@ class window.Comojo
       page = results[0] or new Page()
       if results.length
         @comments = @_setupComments page
-        @comments.fetch()
+        @comments.fetch().then @_addIndicators
       else
         page.save(url: @options.url).then (comments) =>
           @comments = @_setupComments page, comments
       cb page
+
+  _addIndicators: (comments) =>
+    countsByEl = @_countsByEl(comments)
+    $(@options.el).each (i, el) ->
+      $(el).append templates.indicator(count: (countsByEl[i + 1] or '+'))
+
+
+  _countsByEl: (comments) ->
+    commentsByGroup = comments.groupBy((comment) -> comment.get('elIndex'))
+    @_.object @_.keys(commentsByGroup), @_.map (commentsByGroup), (v, k) ->
+      v.length
 
   _setupComments: (page) ->
     comments = new (Comments page)()
     comments.on 'add', @_showComment
 
   _bindClicks: (page) =>
-    $(@options.el).on 'click', (e) =>
-      clicked = $ e.target
+    $(@options.el).on 'click', '.indicator', (e) =>
+      clicked = $(e.target).parent()
       @_ensureAuth (user) =>
         @_setupCommentEntry user, clicked, page
 
