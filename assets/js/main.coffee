@@ -59,10 +59,12 @@ class window.Comojo
             f.get('elIndex') is clicked.index()
     $('body').append @commentsView.render().el
     $('.input-comment').focus()
-    $(@options.container).css 'margin-left': $(@options.container).css('margin-left')
     $(@options.container).css
-      '-webkit-transition': 'margin-left 150ms'
-      "margin-left": "-150px"
+      'position': 'relative'
+      'left': 0
+    $(@options.container).css
+      '-webkit-transition': 'left 150ms'
+      "left": "-150px"
       "width": $(@options.el).width()
 
   _ensureAuth: (cb) ->
@@ -90,7 +92,7 @@ CommentsView = (page, clicked, $container) -> Parse.View.extend
     @$el.css
       position: 'absolute'
       width: 250
-      top: clicked.position().top
+      top: clicked.offset().top
       right: 0
       "z-index": 9999
     @
