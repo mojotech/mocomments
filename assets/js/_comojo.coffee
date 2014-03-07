@@ -10,7 +10,7 @@ class window.Comojo
         key: '8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3'
     , options
 
-    @$container = $(@options.container)
+    @$container   = $(@options.container)
     @$commentable = @$container.find(@options.commentable)
 
     @$commentable.addClass 'mc-indicated'
@@ -30,7 +30,7 @@ class window.Comojo
             @_addIndicators(comments, page)
       else
         page.save(url: @options.url).then =>
-          @comments = new (Comments page)
+          @comments = new (Comments page)()
       d.resolve page
 
   _createPage: (Page, cb) ->
@@ -39,33 +39,40 @@ class window.Comojo
         .equalTo('url', @options.url)
         .find()
         .then (results) =>
-          d.resolve(results[0] or new Page(), !!results.length)
+          d.resolve results[0] or new Page(), !!results.length
 
   _addIndicators: (comments, page) =>
     countsByEl = @_countsByEl(comments)
     @$commentable.each (i, el) ->
       $(el).append templates.indicator(count: (countsByEl[i] or '+'))
     @$commentable.on 'click', '.mc-indicator', (e) =>
-      clicked = $(e.target).parent()
-      @_ensureAuth (user) =>
-        @_setupCommentEntry user, clicked, page
+      @_onIndicatorClick(e, page)
+
+  _onIndicatorClick: (e, page) =>
+    @_ensureAuth (user) =>
+      @commentsView.remove() if @commentsView
+      @_showCommentEntry user, $(e.target).parent(), page
+      @_moveContainer()
 
   _countsByEl: (comments) ->
-    commentsByGroup = comments.groupBy((comment) -> comment.get('elIndex'))
+    commentsByGroup = comments.groupBy (comment) -> comment.get('elIndex')
     @_.object @_.keys(commentsByGroup), @_.map (commentsByGroup), (v, k) ->
       v.length
 
-  _setupCommentEntry: (user, clicked, page) =>
-    @commentsView.remove() if @commentsView
+  _showCommentEntry: (user, clicked, page) =>
     @commentsView = new (CommentsView(page, clicked, @$container, @$commentable))
       model: $.extend user,
         target: clicked
         comments:
           raw: @comments
-          filtered: @comments.filter (f) =>
-            f.get('elIndex') is @$commentable.index(clicked)
+          filtered: @_commentsMatchingClicked(clicked)
     $('body').append @commentsView.render().el
     $('.mc-input-comment').focus()
+
+  _commentsMatchingClicked: (clicked) ->
+    commentsMatchingClicked @comments, clicked, @$commentable
+
+  _moveContainer: ->
     right = if r = @$container.css('right') is 'auto' then 0 else parseInt(r, 10)
     @$container.css
       'position': 'relative'
@@ -93,18 +100,20 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
   events:
     'input .mc-input-comment': 'autoGrow'
     'keydown .mc-input-comment': 'onKeyPress'
-    'click .mc-save-link': 'save'
+    'click .mc-save-link': '_attemptSave'
     'click .mc-close-link': 'close'
 
   render: ->
-    @$el.html(@template(@model))
-    @$el.css
-      position: 'absolute'
-      width: 250
-      top: clicked.offset().top
-      right: 0
-      "z-index": 9999
-    Parse._.defer => $('body').on 'click.mc-close-comment-entry', (e) => @close e
+    @$el
+      .html(@template(@model))
+      .css
+        position: 'absolute'
+        width: 250
+        top: clicked.offset().top
+        right: 0
+        "z-index": 9999
+    Parse._.defer =>
+      $('body').on('click.mc-close-comment-entry', @close.bind(this))
     @
 
   autoGrow: (e) ->
@@ -115,7 +124,7 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
   onKeyPress: (e) ->
     if e.keyCode is 13
       e.preventDefault()
-      @save()
+      @_attemptSave()
 
   close: (e) ->
     e.preventDefault() if e
@@ -125,21 +134,34 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
     $container.attr 'style', ' '
     @remove()
 
-  save: (e) ->
+  _attemptSave: (e) ->
     if e
       e.stopImmediatePropagation()
       e.preventDefault()
     return unless body = @$('.mc-input-comment').val()
-    @model.comments.raw.create
-      page: page
-      elIndex: $commentable.index(clicked)
-      body: body
-      commenter:
-        name: @model.screen_name
-        avatar: @model.profile_image_url
-    @$('.mc-comments').append @model.comments.raw.last().display()
-    $(clicked).find('.mc-indicator').text(@$('.mc-comments .mc-comment').length)
-    @$('.mc-entry').remove()
+
+    @_save(body)
+      .then (comment, comments) =>
+        @$('.mc-comments').append comment.display()
+        $(clicked)
+          .find('.mc-indicator')
+          .text commentsMatchingClicked(comments, clicked, $commentable).length
+        @$('.mc-entry').remove()
+
+  _save: (body) ->
+    deferrable (d) =>
+      @model.comments.raw.create
+        page: page
+        elIndex: $commentable.index clicked
+        body: body
+        commenter:
+          name: @model.screen_name
+          avatar: @model.profile_image_url
+      d.resolve @model.comments.raw.last(), @model.comments.raw
+
+commentsMatchingClicked = (comments, clicked, root) ->
+  comments.filter (f) ->
+    f.get('elIndex') is root.index clicked
 
 Scripts =
   resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js' ]
