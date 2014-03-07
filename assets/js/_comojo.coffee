@@ -22,16 +22,14 @@ class window.Comojo
         .then @_setupComments
 
   _setupComments: (page, existingPage) =>
-    deferrable (d) =>
-      if existingPage
+    if existingPage
+      @comments = new (Comments page)()
+      @comments.fetch()
+        .then (comments) =>
+          @_addIndicators(comments, page)
+    else
+      page.save(url: @options.url).then =>
         @comments = new (Comments page)()
-        @comments.fetch()
-          .then (comments) =>
-            @_addIndicators(comments, page)
-      else
-        page.save(url: @options.url).then =>
-          @comments = new (Comments page)()
-      d.resolve page
 
   _createPage: (Page, cb) ->
     deferrable (d) =>
