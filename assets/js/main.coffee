@@ -29,36 +29,44 @@ class window.Comojo
     Scripts.fetch().then =>
       Parse.initialize @options.parse.id, @options.parse.key
       @_ = Parse._
-      @_createPage Parse.Object.extend("Page"), @_bindClicks
+      @_createPage(Parse.Object.extend("Page"))
+        .then(@_setupComments)
+
+  _setupComments: (page, existingPage) =>
+    d = new $.Deferred()
+    if existingPage
+      @comments = new (Comments page)()
+      @comments.fetch()
+        .then (comments) =>
+          @_addIndicators(comments, page)
+    else
+      page.save(url: @options.url).then =>
+        @comments = new (Comments page)()
+    d.resolve page
+    d.promise()
 
   _createPage: (Page, cb) ->
-    query = new Parse.Query(Page)
-    query.equalTo 'url', @options.url
-    query.find().then (results) =>
-      page = results[0] or new Page()
-      if results.length
-        @comments = new (Comments page)()
-        @comments.fetch().then @_addIndicators
-      else
-        page.save(url: @options.url).then =>
-          @comments = new (Comments page)()
-      cb page
+    d  = new $.Deferred()
+    (new Parse.Query(Page))
+      .equalTo('url', @options.url)
+      .find()
+      .then (results) =>
+        d.resolve(results[0] or new Page(), !!results.length)
+    d.promise()
 
-  _addIndicators: (comments) =>
+  _addIndicators: (comments, page) =>
     countsByEl = @_countsByEl(comments)
     @$commentable.each (i, el) ->
       $(el).append templates.indicator(count: (countsByEl[i] or '+'))
+    @$commentable.on 'click', '.mc-indicator', (e) =>
+      clicked = $(e.target).parent()
+      @_ensureAuth (user) =>
+        @_setupCommentEntry user, clicked, page
 
   _countsByEl: (comments) ->
     commentsByGroup = comments.groupBy((comment) -> comment.get('elIndex'))
     @_.object @_.keys(commentsByGroup), @_.map (commentsByGroup), (v, k) ->
       v.length
-
-  _bindClicks: (page) =>
-    @$commentable.on 'click', '.mc-indicator', (e) =>
-      clicked = $(e.target).parent()
-      @_ensureAuth (user) =>
-        @_setupCommentEntry user, clicked, page
 
   _setupCommentEntry: (user, clicked, page) =>
     @commentsView.remove() if @commentsView
