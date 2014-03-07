@@ -124,7 +124,7 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
 
   close: (e) ->
     e.preventDefault() if e
-    if $(e.target).hasClass('mc-indicator') or $(e.target).hasClass('mc-comment-entry') or ($('.mc-comment-entry').has(e.target).length and not $(e.target).hasClass('close-link'))
+    if $(e.target).hasClass('mc-indicator') or $(e.target).hasClass('mc-comment-entry') or ($('.mc-comment-entry').has(e.target).length and not $(e.target).hasClass('mc-close-link'))
       return false
     $('body').off 'click.mc-close-comment-entry'
     $container.attr 'style', ' '
