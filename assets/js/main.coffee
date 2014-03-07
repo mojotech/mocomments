@@ -8,7 +8,6 @@ require ['jquery'], ($) ->
   new Comojo
     commentable: 'p.commentable'
     container: '.contain'
-    env: 'dev'
 
 class window.Comojo
   constructor: (options) ->
@@ -56,7 +55,7 @@ class window.Comojo
       v.length
 
   _bindClicks: (page) =>
-    @$commentable.on 'click', '.indicator', (e) =>
+    @$commentable.on 'click', '.mc-indicator', (e) =>
       clicked = $(e.target).parent()
       @_ensureAuth (user) =>
         @_setupCommentEntry user, clicked, page
@@ -71,7 +70,7 @@ class window.Comojo
           filtered: @comments.filter (f) =>
             f.get('elIndex') is @$commentable.index(clicked)
     $('body').append @commentsView.render().el
-    $('.input-comment').focus()
+    $('.mc-input-comment').focus()
     right = if r = @$container.css('right') is 'auto' then 0 else parseInt(r, 10)
     @$container.css
       'position': 'relative'
@@ -92,15 +91,15 @@ class window.Comojo
         cb(u)
 
 CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
-  className: 'comment-entry'
+  className: 'mc-comment-entry'
 
   template: templates.comment_entry
 
   events:
-    'input .input-comment': 'autoGrow'
-    'keydown .input-comment': 'onKeyPress'
-    'click .save-link': 'save'
-    'click .close-link': 'close'
+    'input .mc-input-comment': 'autoGrow'
+    'keydown .mc-input-comment': 'onKeyPress'
+    'click .mc-save-link': 'save'
+    'click .mc-close-link': 'close'
 
   render: ->
     @$el.html(@template(@model))
@@ -125,7 +124,7 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
 
   close: (e) ->
     e.preventDefault() if e
-    if $(e.target).hasClass('indicator') or $(e.target).hasClass('comment-entry') or ($('.comment-entry').has(e.target).length and not $(e.target).hasClass('close-link'))
+    if $(e.target).hasClass('mc-indicator') or $(e.target).hasClass('mc-comment-entry') or ($('.mc-comment-entry').has(e.target).length and not $(e.target).hasClass('close-link'))
       return false
     $('body').off 'click.mc-close-comment-entry'
     $container.attr 'style', ' '
@@ -135,7 +134,7 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
     if e
       e.stopImmediatePropagation()
       e.preventDefault()
-    return unless body = @$('.input-comment').val()
+    return unless body = @$('.mc-input-comment').val()
     @model.comments.raw.create
       page: page
       elIndex: $commentable.index(clicked)
@@ -143,9 +142,9 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
       commenter:
         name: @model.screen_name
         avatar: @model.profile_image_url
-    @$('.comments').append @model.comments.raw.last().display()
-    $(clicked).find('.indicator').text(@$('.comments .comment').length)
-    @$('.entry').remove()
+    @$('.mc-comments').append @model.comments.raw.last().display()
+    $(clicked).find('.mc-indicator').text(@$('.mc-comments .mc-comment').length)
+    @$('.mc-entry').remove()
 
 
 Scripts =

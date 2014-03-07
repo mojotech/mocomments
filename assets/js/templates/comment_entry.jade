@@ -1,7 +1,7 @@
-img.entry.comment-photo(src=profile_image_url)
-textarea.input-comment.entry(placeholder='Leave a note...')
-a.save-link.entry.comment-link(href="#save") Save
-a.close-link.comment-link(href='') Close
-.comments
+img.mc-entry.mc-comment-photo(src=profile_image_url)
+textarea.mc-input-comment.mc-entry(placeholder='Leave a note...')
+a.mc-save-link.entry.mc-comment-link(href="#save") Save
+a.mc-close-link.mc-comment-link(href='') Close
+.mc-comments
   each comment in comments.filtered
     !=comment.display()
