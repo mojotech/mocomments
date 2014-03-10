@@ -6,6 +6,7 @@ class window.Comojo
   constructor: (options) ->
     @options = $.extend
       el: 'p'
+      width: 250
       url: window.location.href
       ouathio:
         key: '6bTbWgdrEePCI7uTh9We_BPmULs'
@@ -46,13 +47,13 @@ addIndicators = (options, $commentable, $container) ->
 onIndicatorClick = (e, page, comments, index, $container, $commentable, options) ->
   getUser options, (user) ->
     commentsView.remove?()
-    commentsView = setupCommentEntryView(user, $(e.target).parent(), page, comments, index, $container, $commentable)
+    commentsView = setupCommentEntryView(user, $(e.target).parent(), page, comments, index, $container, $commentable, options)
     $('body').append commentsView.render().el
     $('.mc-input-comment').focus()
-    moveContainer($container)
+    moveContainer($container, options.width)
 
-setupCommentEntryView = (user, clicked, page, comments, index, $container, $commentable) ->
-  new (CommentsView(page, clicked, $container, $commentable))
+setupCommentEntryView = (user, clicked, page, comments, index, $container, $commentable, options) ->
+  new (CommentsView(page, clicked, $container, $commentable, options))
     model: $.extend user,
       target: clicked
       comments:
@@ -80,7 +81,7 @@ getComments = (page) ->
       .then (comments) ->
         d.resolve comments, page
 
-moveContainer = ($container) ->
+moveContainer = ($container, distance) ->
   right = if r = $container.css('right') is 'auto' then 0 else parseInt(r, 10)
   $container.css
     'position': 'relative'
@@ -88,7 +89,7 @@ moveContainer = ($container) ->
     'right': right
   $container.css
     '-webkit-transition': 'right 150ms'
-    "right": Math.max(250 - ($('body').width() - $container[0].getBoundingClientRect().right), right)
+    "right": Math.max(distance - ($('body').width() - $container[0].getBoundingClientRect().right), right)
     "width": $container.width()
 
 indicatorText = (count) ->
@@ -99,7 +100,7 @@ countsByProp = (collection, prop) ->
   _.object _.keys(byProp), _.map (byProp), (v, k) ->
     v.length
 
-CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
+CommentsView = (page, clicked, $container, $commentable, options) -> Parse.View.extend
   className: 'mc-comment-entry'
 
   template: templates.comment_entry
@@ -113,7 +114,7 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
   render: ->
     @$el
       .html(@template(@model))
-      .css commentsViewStyle(clicked)
+      .css commentsViewStyle(clicked, options)
 
     _.defer =>
       $('body').on 'click.mc-close-comment-entry', @close.bind(this)
@@ -150,9 +151,9 @@ shouldNotTriggerClose = (target) ->
   target.hasClass('mc-indicator') or target.hasClass('mc-comment-entry') or
   ($('.mc-comment-entry').has(_.first(target)).length and not target.hasClass('mc-close-link'))
 
-commentsViewStyle = (clicked) ->
+commentsViewStyle = (clicked, options) ->
   position: 'absolute'
-  width: 250
+  width: options.width
   top: clicked.offset().top
   right: 0
   "z-index": 9999
