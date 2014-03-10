@@ -1,4 +1,7 @@
+_ = _ or null
+
 class window.Comojo
+  resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js' ]
   constructor: (options) ->
     @options = $.extend
       el: 'p'
@@ -10,26 +13,17 @@ class window.Comojo
         key: '8VImXPt6ggcOTkW11QYuxaogLb8QLEl9HzS4zwt3'
     , options
 
-    @$container   = $(@options.container)
-    @$commentable = @$container.find(@options.commentable)
+    $container   = $(@options.container)
+    $commentable = $container.find(@options.commentable)
 
-    @$commentable.addClass 'mc-indicated'
+    $commentable.addClass 'mc-indicated'
 
-    Scripts.fetch().then =>
+    getScripts(@resources).then =>
       Parse.initialize @options.parse.id, @options.parse.key
-      @_ = Parse._
+      _ ?= Parse._
       @_createPage(Parse.Object.extend("Page"))
-        .then @_setupComments
-
-  _setupComments: (page, existingPage) =>
-    if existingPage
-      @comments = new (Comments page)()
-      @comments.fetch()
-        .then (comments) =>
-          @_addIndicators(comments, page)
-    else
-      page.save(url: @options.url).then =>
-        @comments = new (Comments page)()
+        .then(setupComments(@options.url))
+        .then(@_addIndicators($commentable, $container))
 
   _createPage: (Page, cb) ->
     deferrable (d) =>
@@ -39,47 +33,30 @@ class window.Comojo
         .then (results) =>
           d.resolve results[0] or new Page(), !!results.length
 
-  _addIndicators: (comments, page) =>
-    countsByEl = @_countsByEl(comments)
-    @$commentable.each (i, el) ->
-      $(el).append templates.indicator(count: (countsByEl[i] or '+'))
-    @$commentable.on 'click', '.mc-indicator', (e) =>
-      @_onIndicatorClick(e, page)
+  _addIndicators: ($commentable, $container) =>
+    (comments, page) =>
+      counts = countsByProp comments, 'elIndex'
+      $commentable.each (i, el) ->
+        $(el).append templates.indicator text: indicatorText(counts[i])
+      $commentable.on 'click', '.mc-indicator', (e) =>
+        index = $commentable.index($target(e).parent())
+        @_onIndicatorClick e, page, comments, index, $container, $commentable
 
-  _onIndicatorClick: (e, page) =>
+  _onIndicatorClick: (e, page, comments, index, $container, $commentable) =>
     @_ensureAuth (user) =>
       @commentsView.remove() if @commentsView
-      @_showCommentEntry user, $(e.target).parent(), page
-      @_moveContainer()
+      @_showCommentEntry user, $(e.target).parent(), page, comments, index, $container, $commentable
+      moveContainer($container)
 
-  _countsByEl: (comments) ->
-    commentsByGroup = comments.groupBy (comment) -> comment.get('elIndex')
-    @_.object @_.keys(commentsByGroup), @_.map (commentsByGroup), (v, k) ->
-      v.length
-
-  _showCommentEntry: (user, clicked, page) =>
-    @commentsView = new (CommentsView(page, clicked, @$container, @$commentable))
+  _showCommentEntry: (user, clicked, page, comments, index, $container, $commentable) =>
+    @commentsView = new (CommentsView(page, clicked, $container, $commentable))
       model: $.extend user,
         target: clicked
         comments:
-          raw: @comments
-          filtered: @_commentsMatchingClicked(clicked)
+          raw: comments
+          filtered: filterByIndex comments, index
     $('body').append @commentsView.render().el
     $('.mc-input-comment').focus()
-
-  _commentsMatchingClicked: (clicked) ->
-    commentsMatchingClicked @comments, clicked, @$commentable
-
-  _moveContainer: ->
-    right = if r = @$container.css('right') is 'auto' then 0 else parseInt(r, 10)
-    @$container.css
-      'position': 'relative'
-      'left': 'auto'
-      'right': right
-    @$container.css
-      '-webkit-transition': 'right 150ms'
-      "right": Math.max(250 - ($('body').width() - @$container[0].getBoundingClientRect().right), right)
-      "width": @$container.width()
 
   _ensureAuth: (cb) ->
     if @user
@@ -89,6 +66,45 @@ class window.Comojo
       Twitter.getUser (u) =>
         @user = u
         cb(u)
+
+setupComments = (url) ->
+  (page, existingPage) ->
+    deferrable (d) ->
+      if existingPage
+        getComments(page).then resolveComments(d)
+      else
+        page.save(url: url).then ->
+          getComments(page).then resolveComments(d)
+
+resolveComments = (d) ->
+  (comments, page) ->
+    d.resolve comments, page
+
+getComments = (page) ->
+  deferrable (d) ->
+    (new (Comments page)())
+      .fetch()
+      .then (comments) ->
+        d.resolve comments, page
+
+moveContainer = ($container) ->
+  right = if r = $container.css('right') is 'auto' then 0 else parseInt(r, 10)
+  $container.css
+    'position': 'relative'
+    'left': 'auto'
+    'right': right
+  $container.css
+    '-webkit-transition': 'right 150ms'
+    "right": Math.max(250 - ($('body').width() - $container[0].getBoundingClientRect().right), right)
+    "width": $container.width()
+
+indicatorText = (count) ->
+  count or '+'
+
+countsByProp = (collection, prop) ->
+  byProp = collection.groupBy (item) -> item.get(prop)
+  _.object _.keys(byProp), _.map (byProp), (v, k) ->
+    v.length
 
 CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
   className: 'mc-comment-entry'
@@ -104,83 +120,111 @@ CommentsView = (page, clicked, $container, $commentable) -> Parse.View.extend
   render: ->
     @$el
       .html(@template(@model))
-      .css
-        position: 'absolute'
-        width: 250
-        top: clicked.offset().top
-        right: 0
-        "z-index": 9999
-    Parse._.defer =>
-      $('body').on('click.mc-close-comment-entry', @close.bind(this))
+      .css commentsViewStyle(clicked)
+
+    _.defer =>
+      $('body').on 'click.mc-close-comment-entry', @close.bind(this)
     @
 
-  autoGrow: (e) ->
-    $t = $(e.target)
-    $t.height ''
-    $t.height $t.prop 'scrollHeight'
+  autoGrow: autoGrow
 
   onKeyPress: (e) ->
-    if e.keyCode is 13
-      e.preventDefault()
-      @_attemptSave()
+    onEnter e, @_attemptSave.bind(this)
 
   close: (e) ->
-    e.preventDefault() if e
-    if $(e.target).hasClass('mc-indicator') or $(e.target).hasClass('mc-comment-entry') or ($('.mc-comment-entry').has(e.target).length and not $(e.target).hasClass('mc-close-link'))
-      return false
+    preventDefault e
+    return if shouldNotTriggerClose $target(e)
     $('body').off 'click.mc-close-comment-entry'
     $container.attr 'style', ' '
     @remove()
 
   _attemptSave: (e) ->
-    if e
-      e.stopImmediatePropagation()
-      e.preventDefault()
-    return unless body = @$('.mc-input-comment').val()
+    hardStop(e) if e
 
-    @_save(body)
-      .then (comment, comments) =>
-        @$('.mc-comments').append comment.display()
-        $(clicked)
-          .find('.mc-indicator')
-          .text commentsMatchingClicked(comments, clicked, $commentable).length
-        @$('.mc-entry').remove()
+    return unless val(@$('.mc-input-comment'))
 
-  _save: (body) ->
-    deferrable (d) =>
-      @model.comments.raw.create
-        page: page
-        elIndex: $commentable.index clicked
-        body: body
-        commenter:
-          name: @model.screen_name
-          avatar: @model.profile_image_url
-      d.resolve @model.comments.raw.last(), @model.comments.raw
+    body = val(@$('.mc-input-comment'))
+    index = $commentable.index(clicked)
+    comments = @model.comments.raw
 
-commentsMatchingClicked = (comments, clicked, root) ->
-  comments.filter (f) ->
-    f.get('elIndex') is root.index clicked
+    displayNewComment saveComment(newComment(body, index, @model, page), comments),
+      $comments: @$('.mc-comments')
+      $indicator: $(clicked).find '.mc-indicator'
+      $entry: @$('.mc-entry')
+      count: _.size filterByIndex comments, index
 
-Scripts =
-  resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js' ]
-  fetch: ->
-    $.when.apply $, @resources.map $.getScript
+shouldNotTriggerClose = (target) ->
+  target.hasClass('mc-indicator') or target.hasClass('mc-comment-entry') or
+  ($('.mc-comment-entry').has(_.first(target)).length and not target.hasClass('mc-close-link'))
 
-Twitter =
-  initialize: (key) ->
-    OAuth.initialize key
-  getUser: (cb) ->
-    if u = localStorage.getItem('comojoUser')
-      return cb JSON.parse u
-    OAuth.popup 'twitter', (error, result) ->
-      result.get('/1.1/account/settings.json').done (data) ->
-        result.get
-          url: '/1.1/users/show.json',
-          data:
-            screen_name: data.screen_name
-          success: (user) ->
-            localStorage.setItem 'comojoUser', JSON.stringify(user)
-            cb(user)
+commentsViewStyle = (clicked) ->
+  position: 'absolute'
+  width: 250
+  top: clicked.offset().top
+  right: 0
+  "z-index": 9999
+
+val = (el) -> el.val()
+
+displayNewComment = (comment, opts) ->
+  opts.$comments.append comment.display()
+  opts.$indicator.text opts.count
+  opts.$entry.remove()
+
+stopImmediatePropagation = (e) ->
+  e.stopImmediatePropagation()
+
+hardStop = (e) ->
+  stopImmediatePropagation(e)
+  preventDefault(e)
+
+newComment = (body, index, model, page) ->
+  page: page
+  elIndex: index
+  body: body
+  commenter:
+    name: model.screen_name
+    avatar: model.profile_image_url
+
+saveComment = (comment, comments) ->
+  comments.create comment
+  comments.last()
+
+preventDefault = (e) ->
+  e.preventDefault()
+
+keyCode = (e) ->
+  e.keyCode
+
+onEnter = (e, cb) ->
+  if isEnter(keyCode(e))
+    cb()
+
+isEnter = (keyCode) ->
+  keyCode is 13
+
+$target = (e) ->
+  $(e.target)
+
+autoGrow = (e) ->
+  $t = $target(e)
+  $t.height ''
+  $t.height $t.prop 'scrollHeight'
+
+filterByIndex = (collection, index) ->
+  collection.filter byIndex(index)
+
+byProperty = (property, value) ->
+  (m) ->
+    m.get(property) is value
+
+byIndex = (index) ->
+  byProperty('elIndex', index)
+
+deferrable = (fn) ->
+  d = $.Deferred()
+  fn d
+  d.promise()
 
 Comments = (page) ->
   comment = Comment()
@@ -195,7 +239,21 @@ Comment = ->
         c: @get('commenter')
         body: @get('body')
 
-deferrable = (fn) ->
-  d = $.Deferred()
-  fn d
-  d.promise()
+getScripts = (scripts) ->
+  $.when.apply $, scripts.map $.getScript
+
+Twitter =
+  initialize: (key) ->
+    OAuth.initialize key
+  getUser: (cb) ->
+    if u = localStorage.getItem('comojoUser')
+      return cb JSON.parse u
+    OAuth.popup 'twitter', (error, result) ->
+      result.get('/1.1/account/settings.json').done (data) ->
+        result.get
+          url: '/1.1/users/show.json'
+          data:
+            screen_name: data.screen_name
+          success: (user) ->
+            localStorage.setItem 'comojoUser', JSON.stringify(user)
+            cb(user)
