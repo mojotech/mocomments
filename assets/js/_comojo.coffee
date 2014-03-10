@@ -62,8 +62,8 @@ ensureAuth = (v, cb) ->
   if v.user
     cb v.user
   else
-    Twitter.initialize v.options.ouathio.key
-    Twitter.getUser (u) ->
+    OAuth.initialize v.options.ouathio.key
+    getUser (u) ->
       v.user = u
       cb(u)
 
@@ -242,18 +242,15 @@ Comment = ->
 getScripts = (scripts) ->
   $.when.apply $, scripts.map $.getScript
 
-Twitter =
-  initialize: (key) ->
-    OAuth.initialize key
-  getUser: (cb) ->
-    if u = localStorage.getItem('comojoUser')
-      return cb JSON.parse u
-    OAuth.popup 'twitter', (error, result) ->
-      result.get('/1.1/account/settings.json').done (data) ->
-        result.get
-          url: '/1.1/users/show.json'
-          data:
-            screen_name: data.screen_name
-          success: (user) ->
-            localStorage.setItem 'comojoUser', JSON.stringify(user)
-            cb(user)
+getUser = (cb) ->
+  if u = localStorage.getItem('comojoUser')
+    return cb JSON.parse u
+  OAuth.popup 'twitter', (error, result) ->
+    result.get('/1.1/account/settings.json').done (data) ->
+      result.get
+        url: '/1.1/users/show.json'
+        data:
+          screen_name: data.screen_name
+        success: (user) ->
+          localStorage.setItem 'comojoUser', JSON.stringify(user)
+          cb(user)
