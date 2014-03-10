@@ -21,51 +21,51 @@ class window.Comojo
     getScripts(@resources).then =>
       Parse.initialize @options.parse.id, @options.parse.key
       _ ?= Parse._
-      @_createPage(Parse.Object.extend("Page"))
+      createPage(Parse.Object.extend("Page"), @options)
         .then(setupComments(@options.url))
-        .then(@_addIndicators($commentable, $container))
+        .then addIndicators.call(this, $commentable, $container)
 
-  _createPage: (Page, cb) ->
-    deferrable (d) =>
-      (new Parse.Query(Page))
-        .equalTo('url', @options.url)
-        .find()
-        .then (results) =>
-          d.resolve results[0] or new Page(), !!results.length
+createPage = (Page, options) ->
+  deferrable (d) ->
+    (new Parse.Query(Page))
+      .equalTo('url', options.url)
+      .find()
+      .then (results) ->
+        d.resolve results[0] or new Page(), !!results.length
 
-  _addIndicators: ($commentable, $container) =>
-    (comments, page) =>
-      counts = countsByProp comments, 'elIndex'
-      $commentable.each (i, el) ->
-        $(el).append templates.indicator text: indicatorText(counts[i])
-      $commentable.on 'click', '.mc-indicator', (e) =>
-        index = $commentable.index($target(e).parent())
-        @_onIndicatorClick e, page, comments, index, $container, $commentable
+addIndicators = ($commentable, $container) ->
+  (comments, page) =>
+    counts = countsByProp comments, 'elIndex'
+    $commentable.each (i, el) ->
+      $(el).append templates.indicator text: indicatorText(counts[i])
+    $commentable.on 'click', '.mc-indicator', (e) =>
+      index = $commentable.index($target(e).parent())
+      onIndicatorClick.call this, e, page, comments, index, $container, $commentable
 
-  _onIndicatorClick: (e, page, comments, index, $container, $commentable) =>
-    @_ensureAuth (user) =>
-      @commentsView.remove() if @commentsView
-      @_showCommentEntry user, $(e.target).parent(), page, comments, index, $container, $commentable
-      moveContainer($container)
-
-  _showCommentEntry: (user, clicked, page, comments, index, $container, $commentable) =>
-    @commentsView = new (CommentsView(page, clicked, $container, $commentable))
-      model: $.extend user,
-        target: clicked
-        comments:
-          raw: comments
-          filtered: filterByIndex comments, index
+onIndicatorClick = (e, page, comments, index, $container, $commentable) ->
+  ensureAuth this, (user) ->
+    @commentsView.remove() if @commentsView
+    @commentsView = setupCommentEntryView(user, $(e.target).parent(), page, comments, index, $container, $commentable)
     $('body').append @commentsView.render().el
     $('.mc-input-comment').focus()
+    moveContainer($container)
 
-  _ensureAuth: (cb) ->
-    if @user
-      cb(@user)
-    else
-      Twitter.initialize @options.ouathio.key
-      Twitter.getUser (u) =>
-        @user = u
-        cb(u)
+setupCommentEntryView = (user, clicked, page, comments, index, $container, $commentable) ->
+  new (CommentsView(page, clicked, $container, $commentable))
+    model: $.extend user,
+      target: clicked
+      comments:
+        raw: comments
+        filtered: filterByIndex comments, index
+
+ensureAuth = (v, cb) ->
+  if v.user
+    cb v.user
+  else
+    Twitter.initialize v.options.ouathio.key
+    Twitter.getUser (u) ->
+      v.user = u
+      cb(u)
 
 setupComments = (url) ->
   (page, existingPage) ->
