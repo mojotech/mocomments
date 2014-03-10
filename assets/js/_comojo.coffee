@@ -23,6 +23,7 @@ class window.Comojo
       _ ?= Parse._
       createPage(Parse.Object.extend("Page"), @options)
         .then(setupComments(@options.url))
+        # ideally remove any need to apply this context
         .then addIndicators.call(this, $commentable, $container)
 
 createPage = (Page, options) ->
@@ -74,6 +75,7 @@ setupComments = (url) ->
         getComments(page).then resolveComments(d)
       else
         page.save(url: url).then ->
+          # ideally don't call getComments as we know it will be empty
           getComments(page).then resolveComments(d)
 
 resolveComments = (d) ->
