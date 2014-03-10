@@ -1,4 +1,5 @@
 _ = _ or null
+commentsView = {}
 
 class window.Comojo
   resources: ['//cdn.jsdelivr.net/parse/1.2.9/parse.js', 'https://oauth.io//auth/download/latest/oauth.min.js' ]
@@ -23,8 +24,7 @@ class window.Comojo
       _ ?= Parse._
       createPage(Parse.Object.extend("Page"), @options)
         .then(setupComments(@options.url))
-        # ideally remove any need to apply this context
-        .then addIndicators.call(this, $commentable, $container)
+        .then addIndicators @options, $commentable, $container
 
 createPage = (Page, options) ->
   deferrable (d) ->
@@ -34,20 +34,20 @@ createPage = (Page, options) ->
       .then (results) ->
         d.resolve results[0] or new Page(), !!results.length
 
-addIndicators = ($commentable, $container) ->
+addIndicators = (options, $commentable, $container) ->
   (comments, page) =>
     counts = countsByProp comments, 'elIndex'
     $commentable.each (i, el) ->
       $(el).append templates.indicator text: indicatorText(counts[i])
     $commentable.on 'click', '.mc-indicator', (e) =>
       index = $commentable.index($target(e).parent())
-      onIndicatorClick.call this, e, page, comments, index, $container, $commentable
+      onIndicatorClick e, page, comments, index, $container, $commentable, options
 
-onIndicatorClick = (e, page, comments, index, $container, $commentable) ->
-  ensureAuth this, (user) ->
-    @commentsView.remove() if @commentsView
-    @commentsView = setupCommentEntryView(user, $(e.target).parent(), page, comments, index, $container, $commentable)
-    $('body').append @commentsView.render().el
+onIndicatorClick = (e, page, comments, index, $container, $commentable, options) ->
+  getUser options, (user) ->
+    commentsView.remove?()
+    commentsView = setupCommentEntryView(user, $(e.target).parent(), page, comments, index, $container, $commentable)
+    $('body').append commentsView.render().el
     $('.mc-input-comment').focus()
     moveContainer($container)
 
@@ -58,15 +58,6 @@ setupCommentEntryView = (user, clicked, page, comments, index, $container, $comm
       comments:
         raw: comments
         filtered: filterByIndex comments, index
-
-ensureAuth = (v, cb) ->
-  if v.user
-    cb v.user
-  else
-    OAuth.initialize v.options.ouathio.key
-    getUser (u) ->
-      v.user = u
-      cb(u)
 
 setupComments = (url) ->
   (page, existingPage) ->
@@ -244,15 +235,17 @@ Comment = ->
 getScripts = (scripts) ->
   $.when.apply $, scripts.map $.getScript
 
-getUser = (cb) ->
+getUser = (options, cb) ->
   if u = localStorage.getItem('comojoUser')
     return cb JSON.parse u
-  OAuth.popup 'twitter', (error, result) ->
-    result.get('/1.1/account/settings.json').done (data) ->
-      result.get
-        url: '/1.1/users/show.json'
-        data:
-          screen_name: data.screen_name
-        success: (user) ->
-          localStorage.setItem 'comojoUser', JSON.stringify(user)
-          cb(user)
+  else
+    OAuth.initialize options.ouathio.key
+    OAuth.popup 'twitter', (error, result) ->
+      result.get('/1.1/account/settings.json').done (data) ->
+        result.get
+          url: '/1.1/users/show.json'
+          data:
+            screen_name: data.screen_name
+          success: (user) ->
+            localStorage.setItem 'comojoUser', JSON.stringify(user)
+            cb(user)
