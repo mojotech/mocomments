@@ -25,7 +25,9 @@ class window.Comojo
       _ ?= Parse._
       createPage(Parse.Object.extend("Page"), @options)
         .then(setupComments(@options.url))
-        .then addIndicators @options, $commentable, $container
+        .then addIndicators @options,
+          $commentable: $commentable
+          $container: $container
 
 createPage = (Page, options) ->
   deferrable (d) ->
@@ -35,25 +37,25 @@ createPage = (Page, options) ->
       .then (results) ->
         d.resolve results[0] or new Page(), !!results.length
 
-addIndicators = (options, $commentable, $container) ->
-  (comments, page) =>
+addIndicators = (options, els) ->
+  (comments, page) ->
     counts = countsByProp comments, 'elIndex'
-    $commentable.each (i, el) ->
+    els.$commentable.each (i, el) ->
       $(el).append templates.indicator text: indicatorText(counts[i])
-    $commentable.on 'click', '.mc-indicator', (e) =>
-      index = $commentable.index($target(e).parent())
-      onIndicatorClick e, page, comments, index, $container, $commentable, options
+    els.$commentable.on 'click', '.mc-indicator', (e) =>
+      index = els.$commentable.index($target(e).parent())
+      onIndicatorClick e, page, comments, index, els, options
 
-onIndicatorClick = (e, page, comments, index, $container, $commentable, options) ->
+onIndicatorClick = (e, page, comments, index, els, options) ->
   getUser options, (user) ->
     commentsView.remove?()
-    commentsView = setupCommentEntryView(user, $(e.target).parent(), page, comments, index, $container, $commentable, options)
+    commentsView = setupCommentEntryView(user, $(e.target).parent(), page, comments, index, els, options)
     $('body').append commentsView.render().el
     $('.mc-input-comment').focus()
-    moveContainer($container, options.width)
+    moveContainer(els.$container, options.width)
 
-setupCommentEntryView = (user, clicked, page, comments, index, $container, $commentable, options) ->
-  new (CommentsView(page, clicked, $container, $commentable, options))
+setupCommentEntryView = (user, clicked, page, comments, index, els, options) ->
+  new (CommentsView(page, clicked, els, options))
     model: $.extend user,
       target: clicked
       comments:
@@ -100,7 +102,7 @@ countsByProp = (collection, prop) ->
   _.object _.keys(byProp), _.map (byProp), (v, k) ->
     v.length
 
-CommentsView = (page, clicked, $container, $commentable, options) -> Parse.View.extend
+CommentsView = (page, clicked, els, options) -> Parse.View.extend
   className: 'mc-comment-entry'
 
   template: templates.comment_entry
@@ -138,7 +140,7 @@ CommentsView = (page, clicked, $container, $commentable, options) -> Parse.View.
     return unless val(@$('.mc-input-comment'))
 
     body = val(@$('.mc-input-comment'))
-    index = $commentable.index(clicked)
+    index = els.$commentable.index(clicked)
     comments = @model.comments.raw
 
     displayNewComment saveComment(newComment(body, index, @model, page), comments),
@@ -206,7 +208,11 @@ autoGrow = (e) ->
   $t.height $t.prop 'scrollHeight'
 
 filterByIndex = (collection, index) ->
-  collection.filter byIndex(index)
+  filter(collection)(byIndex(index))
+
+filter = (collection) ->
+  (action) ->
+    collection.filter action
 
 byProperty = (property, value) ->
   (m) ->
