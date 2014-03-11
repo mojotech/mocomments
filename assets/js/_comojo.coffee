@@ -131,7 +131,7 @@ CommentsView = (page, clicked, els, options) -> Parse.View.extend
     preventDefault e
     return if shouldNotTriggerClose $target(e)
     $('body').off 'click.mc-close-comment-entry'
-    $container.attr 'style', ' '
+    els.$container.attr 'style', ' '
     @remove()
 
   _attemptSave: (e) ->
