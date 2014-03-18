@@ -4,6 +4,9 @@
     "roots-deploy": "node_modules/roots/bin/roots deploy --gh-pages"
   },
   "devDependencies": {
-    "roots": "~2.1.2"
+    "roots": "~2.1.2",
+    "gulp": "3.5.6",
+    "gulp-concat": "2.1.7",
+    "gulp-uglify": "0.2.1"
   }
 }

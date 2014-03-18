@@ -1,6 +1,6 @@
 # roots v2.1.0
 # Files in this list will not be compiled - minimatch supported
-ignore_files: ['_*', 'readme*', '.gitignore', '.DS_Store', 'package.json']
+ignore_files: ['_*', 'readme*', '.gitignore', '.DS_Store', 'package.json', 'gulpfile.js']
 ignore_folders: ['.git', 'node_modules']
 
 watcher_ignore_folders: ['components', 'node_modules']
